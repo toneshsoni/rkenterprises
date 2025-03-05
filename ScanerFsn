@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking ID Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #333;
+        }
+        input {
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            padding: 10px;
+            border: none;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        video {
+            width: 100%;
+            max-height: 300px;
+            border: 2px solid #ddd;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Tracking ID Scanner</h2>
+        
+        <!-- Upload Excel File -->
+        <input type="file" id="excelFile" accept=".xlsx, .xls">
+        
+        <!-- Scan Barcode -->
+        <button onclick="startScan()">Scan Barcode</button>
+        
+        <!-- Video Preview for Barcode Scanning -->
+        <video id="preview"></video>
+        
+        <p id="scanResult"></p>
+    </div>
+
+    <!-- Import Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+    <script>
+        let trackingData = {};
+
+        // Function to read Excel file
+        document.getElementById("excelFile").addEventListener("change", function(event) {
+            let file = event.target.files[0];
+
+            if (!file) {
+                alert("Please upload an Excel file.");
+                return;
+            }
+
+            let reader = new FileReader();
+
+            reader.onload = function(e) {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, { type: "array" });
+
+                let sheet = workbook.Sheets[workbook.SheetNames[0]];
+                let jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // Store data in dictionary (Tracking ID -> URL)
+                jsonData.forEach(row => {
+                    if (row[0] && row[1]) {
+                        trackingData[row[0].toString()] = row[1];
+                    }
+                });
+
+                alert("Excel file uploaded successfully!");
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Function to start barcode scanning
+        function startScan() {
+            const codeReader = new ZXing.BrowserBarcodeReader();
+            const preview = document.getElementById("preview");
+            
+            codeReader.decodeFromVideoDevice(undefined, preview, (result, err) => {
+                if (result) {
+                    let scannedCode = result.text.trim();
+                    document.getElementById("scanResult").innerText = "Tracking ID: " + scannedCode;
+
+                    // Open URL if found in uploaded Excel
+                    if (trackingData[scannedCode]) {
+                        window.location.href = trackingData[scannedCode];
+                    } else {
+                        alert("Tracking ID not found!");
+                    }
+                    
+                    codeReader.reset();  // Stop scanning
+                }
+            });
+        }
+    </script>
+
+</body>
+</html>
